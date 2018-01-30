@@ -421,9 +421,9 @@ end
 fig1 = figure;
 hold on; 
 plot(tmp_vel_unfilt); 
-plot(tmp_vel_fV,'LineWidth', 3);
+%plot(tmp_vel_fV,'LineWidth', 3);
 plot(tmp_vel_fB,'LineWidth', 3);
-plot(tmp_vel_fF,'LineWidth', 3);
+%plot(tmp_vel_fF,'LineWidth', 3);
 %plot(tmp_vel_fF,'LineWidth', 3);                
 
 %plot(20*pks);
@@ -431,11 +431,11 @@ plot(tmp_vel_fF,'LineWidth', 3);
 %plot(dxV-10);
 %plot(20*dyB-20);
 %plot(dyV-20);
-plot(50*tmp_delta_ori-5);
-vline(tmp_swim_bouts(:,1));
-vline(tmp_swim_bouts(:,2));
-vline(idx_tap,'g');
-vline(fast_locs,'c');
+plot(50*tmp_delta_ori-3);
+vline(tmp_swim_bouts(:,1),'m');
+vline(tmp_swim_bouts(:,2),'m');
+vline(idx_tap+1880,'k');
+%vline(fast_locs,'c');
 hold off;
 
 % fig2 = figure; histfit(tmp_swim_bouts(:,3),50);
@@ -446,7 +446,7 @@ hold off;
 % fig7 = figure; histfit(tmp_swim_bouts(:,6),50);
 % fig8 = figure; histfit(tmp_swim_bouts(:,12),50);
 
-% dcm1 = datacursormode(fig1);
-% set(dcm1, 'UpdateFcn', @Data_Cursor_precision, 'Enable', 'on');
+ dcm1 = datacursormode(fig1);
+ set(dcm1, 'UpdateFcn', @Data_Cursor_precision, 'Enable', 'on');
 
 %save('/Institut Curie/Lab/Projects/Scripts/ZebranalysisSystem/AST_TAP_data.mat',freeSwim);

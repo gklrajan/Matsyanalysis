@@ -66,7 +66,6 @@ datarate_calc_Hz = (1/(median(time_diff)).*10^6);
 
 idx_time       = abs(time_diff) >= 1.01*frame_length_calc_ms;  % searches for time differences between frames that are +-1% of the expected frame duration
 
-
 % FRAME COUNTER:
 % index difference between frames, based on the cameras 24bit frame counter
 
@@ -99,26 +98,25 @@ fprintf('\n\nfirst frame in the block of missed frames : number of frames lost\n
 fprintf('\n %d: %d',  [idx_lost, frame_diff(idx_frame)-1].');
 fprintf('\n\ntiming flawed (outside of lost frames):  %d  \n', ~isTime  );
 
-
 %%
-% % INSERT nans for lost frames...
+% % % INSERT nans for lost frames...
+% % 
+% % % define anonymous function that inserts (nxm) blocks into (oxm) matrices
+% insert_blocks = @(insert_block, matrix, n) cat(1,  matrix(1:n-1,:), insert_block, matrix(n:end,:) );
 % 
-% % define anonymous function that inserts (nxm) blocks into (oxm) matrices
-insert_blocks = @(insert_block, matrix, n) cat(1,  matrix(1:n-1,:), insert_block, matrix(n:end,:) );
-
-data_raw = tmp_data;
-
-for ii = nnz(idx_frame):-1:1 % starts from the last row in the matrix to keep the indizes for block-insertion
- 
-    nan_block       = nan(frame_diff(idx_lost(ii)) - 1, num_data_categories);
-    nan_block(:, 1) = tmp_data(idx_lost(ii)-1, 1)+1: tmp_data(idx_lost(ii)-1, 1) + frame_diff(idx_lost(ii))-1; % fill the first column of the Nan blocks with frame numbers that were missing
-    
-    tmp_data        = insert_blocks(nan_block, tmp_data, idx_lost(ii));
-    
-end
-
-tmp_data(:,1) = tmp_data(:,1) - tmp_data(1,1) + 1; % framecounter starts at 1
-
+% data_raw = tmp_data;
+% 
+% for ii = nnz(idx_frame):-1:1 % starts from the last row in the matrix to keep the indizes for block-insertion
+%  
+%     nan_block       = nan(frame_diff(idx_lost(ii)) - 1, num_data_categories);
+%     nan_block(:, 1) = tmp_data(idx_lost(ii)-1, 1)+1: tmp_data(idx_lost(ii)-1, 1) + frame_diff(idx_lost(ii))-1; % fill the first column of the Nan blocks with frame numbers that were missing
+%     
+%     tmp_data        = insert_blocks(nan_block, tmp_data, idx_lost(ii));
+%     
+% end
+% 
+% tmp_data(:,1) = tmp_data(:,1) - tmp_data(1,1) + 1; % framecounter starts at 1
+% 
 
 % read the fish images
 
@@ -422,9 +420,9 @@ plot(tmp_vel_fB,'LineWidth', 3);
 %plot(dxV-10);
 %plot(20*dyB-20);
 %plot(dyV-20);
-plot(50*tmp_delta_ori-5);
-vline(tmp_swim_bouts(:,1));
-vline(tmp_swim_bouts(:,2));
+plot(10*tmp_delta_ori-5);
+%vline(tmp_swim_bouts(:,1));
+%vline(tmp_swim_bouts(:,2));
 hold off;
 
 fig2 = figure; histfit(tmp_swim_bouts(:,3),50);

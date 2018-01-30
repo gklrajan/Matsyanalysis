@@ -33,3 +33,12 @@ for gg = 1:length(jugaad)
 subplot(3,3,gg);
 histogram(pooledRaw_MT(:,jugaad(gg)),100);
 end
+
+%to plot overlayed histograms of WT & mutant
+for kk = 1:length(jugaad)
+subplot(3,3,kk);
+histogram(pooledRaw_WT(:,jugaad(kk)),100,'FaceColor','g','FaceAlpha',0.5);
+hold on;
+histogram(pooledRaw_MT(:,jugaad(kk)),100,'FaceColor','r','FaceAlpha',0.5)
+hold off;
+end

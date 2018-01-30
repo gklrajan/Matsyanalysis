@@ -26,16 +26,49 @@ acquis_date = tmp_str{1, 1}; acquis_time = tmp_str{1, 2}; exp_type    = tmp_str{
 
 % acquisition parameters
 window_size         = 0;
-num_data_categories = 11+window_size^2; %6 for swim /6+5 for loom
+num_data_categories = 6+window_size^2; %6 for swim /6+5 for loom
 camscale_px_per_mm  = 20.6; % px/mm
 datarate_Hz         = 750;  % Hertz
-NumVar = 11; %6 for swim /6+5 for loom
+NumVar = 6; %6 for swim /6+5 for loom
 
 % Read and reorganize the bin file
 h        = fopen([PathName, FileName]);
 tmp_data = fread(h, inf, 'float');
 fclose(h);
 
+%% LOOM SPECIFIC : ID inf; extract next 4 values and delete them.
+
+idx_inf = tmp_data==inf;
+idx_inf_frames = find(idx_inf==1);
+
+%% loom_params key
+%inf
+%adtlAngle
+%blobSpeed/stimSpeed/Time[ind]
+%bgCountStop
+%approachSpeed
+%FISHangle
+%Cameraframe
+
+
+for idp = 1:length(idx_inf_frames)
+    
+loom_params(:,idp) = [tmp_data(idx_inf_frames(idp)); tmp_data(idx_inf_frames(idp)+1); tmp_data(idx_inf_frames(idp)+2); tmp_data(idx_inf_frames(idp)+3); tmp_data(idx_inf_frames(idp)+4);tmp_data(idx_inf_frames(idp)+5)];
+
+end
+
+%tmp_data_loom = tmp_data;
+
+    
+tmp_data(idx_inf_frames)=[];
+tmp_data(idx_inf_frames+1)=[];
+tmp_data(idx_inf_frames+2)=[];
+tmp_data(idx_inf_frames+3)=[];
+tmp_data(idx_inf_frames+4)=[];
+tmp_data(1,:)=[];
+
+
+%%
 tmp_data = tmp_data(1:(end-mod(size(tmp_data,1), num_data_categories)), 1); % cuts when parts of the data categories are missing at the end
 tmp_data = reshape(tmp_data, [num_data_categories, size(tmp_data, 1)/num_data_categories])';
 
@@ -90,8 +123,8 @@ isTime = isequal(idx_time, idx_frame);
 
 duration = tmp_data(end,1)/datarate_Hz/60;
 
-idx_tap = tmp_data(:,7)==1;
-idx_tap = find(idx_tap==1);
+%idx_tap = tmp_data(:,7)==1;
+%idx_tap = find(idx_tap==1);
 
 % prints the above calculated values
 
@@ -449,4 +482,4 @@ hold off;
 % dcm1 = datacursormode(fig1);
 % set(dcm1, 'UpdateFcn', @Data_Cursor_precision, 'Enable', 'on');
 
-%save('/Institut Curie/Lab/Projects/Scripts/ZebranalysisSystem/AST_TAP_data.mat',freeSwim);
+save('/Institut Curie/Lab/Projects/Scripts/ZebranalysisSystem/AST_LOOM_data.mat',freeSwim);
