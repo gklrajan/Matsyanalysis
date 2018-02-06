@@ -20,7 +20,7 @@ end
 % [h(ii),p(ii)] = ttest2(pooledRaw_MT(:,ii),pooledRaw_WT(:,ii));
 % end
 
-jugaad = [3,6,7,8,9,12,13];
+jugaad = [3,6,7,8,9,12,13,14];
 
 figure1 = figure;
 for gg = 1:length(jugaad)
@@ -37,7 +37,7 @@ end
 %to plot overlayed histograms of WT & mutant
 for kk = 1:length(jugaad)
 subplot(3,3,kk);
-histogram(pooledRaw_WT(:,jugaad(kk)),100,'FaceColor','g','FaceAlpha',0.5);
+histogram(pooledRaw_WT(:,jugaad(kk)),100,'FaceColor','g','FaceAlpha',1);
 hold on;
 histogram(pooledRaw_MT(:,jugaad(kk)),100,'FaceColor','r','FaceAlpha',0.5)
 hold off;

@@ -137,6 +137,30 @@ fprintf('\n\nfirst frame in the block of missed frames : number of frames lost\n
 fprintf('\n %d: %d',  [idx_lost, frame_diff(idx_frame)-1].');
 fprintf('\n\ntiming flawed (outside of lost frames):  %d  \n', ~isTime  );
 
+%% dish center
+
+xpos = tmp_data(:, 4);
+ypos = tmp_data(:, 5);
+
+snap = imread('petriplate.jpg');
+dish_center = determine_dish_centre(snap,440);
+tmp_radialloc = sqrt((xpos - dish_center(1) ).^2 + (ypos - dish_center(2)).^2);
+tmp_inmiddle  = tmp_radialloc < 430; %depends on pixel resolution/ plate diameter
+idx_edge = find(tmp_inmiddle==0);
+tmp_data(idx_edge,2:end) = nan;
+
+%% dish center
+
+xpos = tmp_data(:, 4);
+ypos = tmp_data(:, 5);
+
+snap = imread('petriplate.jpg');
+dish_center = determine_dish_centre(snap,440);
+tmp_radialloc = sqrt((xpos - dish_center(1) ).^2 + (ypos - dish_center(2)).^2);
+tmp_inmiddle  = tmp_radialloc < 430; %depends on pixel resolution/ plate diameter
+idx_edge = find(tmp_inmiddle==0);
+tmp_data(idx_edge,2:end) = nan;
+
 
 %%
 % % INSERT nans for lost frames...
@@ -283,6 +307,37 @@ tmp_vel_fF  = tmp_dist_fF.*datarate_Hz;  % convert to velocity in mm/s
 
 tmp_vel_fF(idx_nan) = nan; % re-insert the nan values
 
+%% orientation filter
+
+% remoivng nans for filtering orientation
+tmp_delta_ori = rad2deg(tmp_delta_ori);
+tmp_delta_ori(idx_nan) = 0;
+tmp_delta_ori(1) = 0;
+
+tmp_delta_ori_filtered = tmp_delta_ori;
+tmp_delta_ori_filtered(isnan(tmp_delta_ori_filtered))=0;
+windowWidth = 25; %larger window leads to more averaging --> depends on your signal
+polynomialOrder = 3; %larger order --> less smotthing
+tmp_delta_ori_filtered = sgolayfilt(tmp_delta_ori_filtered, polynomialOrder, windowWidth);
+plot(tmp_delta_ori_filtered);
+hold on;
+% another small window filtering to further smoothen the signal, useful for
+% finding local maximas and minimas.
+windowWidth2 = 10;
+polynomialOrder2 = 3;
+tmp_delta_ori_filtered2=sgolayfilt(tmp_delta_ori_filtered, polynomialOrder, windowWidth);
+plot(tmp_delta_ori_filtered2);title('check filtered output before proceeding');
+hold off;
+
+%re-inserting nans
+tmp_delta_ori(idx_nan) = NaN;
+tmp_delta_ori(1) = NaN;
+tmp_ang_vel = tmp_delta_ori_filtered2.*datarate_Hz;
+
+plot(tmp_ang_vel-10); title('ang velo compare');
+hold on;
+plot(tmp_vel_fB);
+hold off;
 
 %% find peaks
 [pks,locs] = findpeaks(tmp_vel_fB,'MinPeakProminence',1,'MinPeakDistance',90); %minPeakProminence & minPeakDist as bout interval and min Velo resp
@@ -394,12 +449,20 @@ for mm = 1:size(fast_locs,1)
     tmp_swim_bouts(mm,9) = nansum(tmp_dist_fV(tmp_swim_bouts(mm,1):tmp_swim_bouts(mm,2)));
     
     %head yaw during bouts
-    yaws = tmp_delta_ori(tmp_swim_bouts(mm,1):tmp_swim_bouts(mm,2));
+    yaws = tmp_delta_ori_filtered2(tmp_swim_bouts(mm,1):tmp_swim_bouts(mm,2));
     tmp_swim_bouts(mm,10)= nansum(yaws(yaws>0)); %summation of total left yaws
     tmp_swim_bouts(mm,11)= nansum(yaws(yaws<0)); %summation of total right yaws
     
     %angular velocity
     tmp_swim_bouts(mm,12) = nansum(abs(yaws))/tmp_swim_bouts(mm,3); %deg/sec
+    
+    %tail half bends
+    tmp_swim_bouts(mm,14)= nansum(islocalmin(tmp_delta_ori_filtered2((tmp_swim_bouts(mm,1)):(tmp_swim_bouts(mm,2))),'MinSeparation',20));
+    tmp_swim_bouts(mm,15)= nansum(islocalmax(tmp_delta_ori_filtered2((tmp_swim_bouts(mm,1)):(tmp_swim_bouts(mm,2))),'MinSeparation',20));
+    tmp_swim_bouts(mm,16)= tmp_swim_bouts(mm,14)+tmp_swim_bouts(mm,15);
+        
+    minmax(mm).min = tmp_swim_bouts(mm,1)+find(islocalmin(tmp_delta_ori_filtered2((tmp_swim_bouts(mm,1)):(tmp_swim_bouts(mm,2))))==1);
+    minmax(mm).max = tmp_swim_bouts(mm,1)+find(islocalmax(tmp_delta_ori_filtered2((tmp_swim_bouts(mm,1)):(tmp_swim_bouts(mm,2))))==1);
     
     %delay
     tmp_swim_bouts(mm,13) = (tmp_swim_bouts(mm,1)-idx_tap(mm))*frame_length_calc_ms; %if there is an error --> error in tap/excape ID
@@ -464,7 +527,10 @@ plot(tmp_vel_fF,'LineWidth', 3);
 %plot(dxV-10);
 %plot(20*dyB-20);
 %plot(dyV-20);
-plot(50*tmp_delta_ori-5);
+
+plot(10*tmp_delta_ori-1);
+plot(10*tmp_delta_ori_filtered2-1.5, 'b-', 'LineWidth', 2);
+
 vline(tmp_swim_bouts(:,1));
 vline(tmp_swim_bouts(:,2));
 vline(idx_tap,'g');
