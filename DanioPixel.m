@@ -66,6 +66,7 @@ datarate_calc_Hz = (1/(median(time_diff)).*10^6);
 
 idx_time       = abs(time_diff) >= 1.01*frame_length_calc_ms;  % searches for time differences between frames that are +-1% of the expected frame duration
 
+
 % FRAME COUNTER:
 % index difference between frames, based on the cameras 24bit frame counter
 
@@ -98,25 +99,38 @@ fprintf('\n\nfirst frame in the block of missed frames : number of frames lost\n
 fprintf('\n %d: %d',  [idx_lost, frame_diff(idx_frame)-1].');
 fprintf('\n\ntiming flawed (outside of lost frames):  %d  \n', ~isTime  );
 
+%% dish center
+
+xpos = tmp_data(:, 4);
+ypos = tmp_data(:, 5);
+
+snap = imread('petriplate.jpg');
+dish_center = determine_dish_centre(snap,440);
+tmp_radialloc = sqrt((xpos - dish_center(1) ).^2 + (ypos - dish_center(2)).^2);
+tmp_inmiddle  = tmp_radialloc < 430; %depends on pixel resolution/ plate diameter
+idx_edge = find(tmp_inmiddle==0);
+tmp_data(idx_edge,2:end) = nan;
+
+
 %%
-% % % INSERT nans for lost frames...
-% % 
+% % INSERT nans for lost frames...
+% 
 % % define anonymous function that inserts (nxm) blocks into (oxm) matrices
-% insert_blocks = @(insert_block, matrix, n) cat(1,  matrix(1:n-1,:), insert_block, matrix(n:end,:) );
-% 
-% data_raw = tmp_data;
-% 
-% for ii = nnz(idx_frame):-1:1 % starts from the last row in the matrix to keep the indizes for block-insertion
-%  
-%     nan_block       = nan(frame_diff(idx_lost(ii)) - 1, num_data_categories);
-%     nan_block(:, 1) = tmp_data(idx_lost(ii)-1, 1)+1: tmp_data(idx_lost(ii)-1, 1) + frame_diff(idx_lost(ii))-1; % fill the first column of the Nan blocks with frame numbers that were missing
-%     
-%     tmp_data        = insert_blocks(nan_block, tmp_data, idx_lost(ii));
-%     
-% end
-% 
-% tmp_data(:,1) = tmp_data(:,1) - tmp_data(1,1) + 1; % framecounter starts at 1
-% % 
+insert_blocks = @(insert_block, matrix, n) cat(1,  matrix(1:n-1,:), insert_block, matrix(n:end,:) );
+
+data_raw = tmp_data;
+
+for ii = nnz(idx_frame):-1:1 % starts from the last row in the matrix to keep the indizes for block-insertion
+ 
+    nan_block       = nan(frame_diff(idx_lost(ii)) - 1, num_data_categories);
+    nan_block(:, 1) = tmp_data(idx_lost(ii)-1, 1)+1: tmp_data(idx_lost(ii)-1, 1) + frame_diff(idx_lost(ii))-1; % fill the first column of the Nan blocks with frame numbers that were missing
+    
+    tmp_data        = insert_blocks(nan_block, tmp_data, idx_lost(ii));
+    
+end
+
+tmp_data(:,1) = tmp_data(:,1) - tmp_data(1,1) + 1; % framecounter starts at 1
+
 
 % read the fish images
 
@@ -141,15 +155,15 @@ for tt = 1:size(tmp_CXP,2)
     f(tt)=im2frame(uint8(CXPimg(:,:,tt)),gray(256)); % create frame for video writing
 end
 figure(3);imshow3D(CXPimg);
-
-% video conversion
-
-vidObj = VideoWriter('awesomeDanionella.avi');
-vidObj.FrameRate=20;
-vidObj.Quality=100;
-open(vidObj)
-writeVideo(vidObj,f);
-close(vidObj);
+% 
+% % video conversion
+% 
+% vidObj = VideoWriter('awesomeDanionella.avi');
+% vidObj.FrameRate=20;
+% vidObj.Quality=100;
+% open(vidObj)
+% writeVideo(vidObj,f);
+% close(vidObj);
 
 %%
 %-------------------------------------------------------------------------------------
@@ -160,6 +174,12 @@ close(vidObj);
 
 xpos = tmp_data(:, 4);
 ypos = tmp_data(:, 5);
+
+%plot x-y for BG
+posXfilt=filtfilt(ones(1,5)/5,1,xpos);
+posYfilt=filtfilt(ones(1,5)/5,1,ypos);
+plot(posXfilt,posYfilt);
+
 tmp_ori_deg = rad2deg(tmp_data(:,6));
 
 % plot fish position 
@@ -187,14 +207,13 @@ dxV(idx_nan) = 0; % for filtering nan values need to be removed
 dy(idx_nan) = 0;
 
 % filters used in the analysis
-filterB = ones(1,100)./100; %for event detection 100 ms
+filterB = ones(1,200)./200; %for event detection 100 ms
 filterV = ones(1,30)./30; %for more precise onset detection 30 ms
 filterF = ones(1,4)./4; %for escapes 4.5 ms
 
 freeSwim.boutAnalysis.acquis_date.exp_type.fish_num.filters.B = filterB;
 freeSwim.boutAnalysis.acquis_date.exp_type.fish_num.filters.V = filterV;
 freeSwim.boutAnalysis.acquis_date.exp_type.fish_num.filters.F = filterF;
-
 
 %% orientation
 
@@ -243,192 +262,243 @@ tmp_vel_fF  = tmp_dist_fF.*datarate_Hz;  % convert to velocity in mm/s
 
 tmp_vel_fF(idx_nan) = nan; % re-insert the nan values
 
+%% orientation filter
+
+% remoivng nans for filtering orientation
+tmp_delta_ori = rad2deg(tmp_delta_ori);
+tmp_delta_ori(idx_nan) = 0;
+tmp_delta_ori(1) = 0;
+
+tmp_delta_ori_filtered = tmp_delta_ori;
+tmp_delta_ori_filtered(isnan(tmp_delta_ori_filtered))=0;
+windowWidth = 25; %larger window leads to more averaging --> depends on your signal
+polynomialOrder = 3; %larger order --> less smotthing
+tmp_delta_ori_filtered = sgolayfilt(tmp_delta_ori_filtered, polynomialOrder, windowWidth);
+plot(tmp_delta_ori_filtered);
+hold on;
+% another small window filtering to further smoothen the signal, useful for
+% finding local maximas and minimas.
+windowWidth2 = 11;
+polynomialOrder2 = 3;
+tmp_delta_ori_filtered2=sgolayfilt(tmp_delta_ori_filtered, polynomialOrder, windowWidth);
+plot(tmp_delta_ori_filtered2);title('check filtered output before proceeding');
+hold off;
+
+%re-inserting nans
+tmp_delta_ori(idx_nan) = NaN;
+tmp_delta_ori(1) = NaN;
+tmp_ang_vel = tmp_delta_ori_filtered2.*datarate_Hz;
+
+%check foe velo vs ang velo
+plot(tmp_ang_vel-10); title('ang velo compare');
+hold on;
+plot(tmp_vel_fB);
+hold off;
+
+
+%% find peaks
+[pks,locs] = findpeaks(tmp_vel_fB,'MinPeakProminence',1,'MinPeakDistance',90); %minPeakProminence & minPeakDist as bout interval and min Velo resp
+
+for qq = 1:size(locs)
+    
+    if (locs(qq) - 3*freeSwim.boutAnalysis.boutLength <=0)... % get rid of any half bout in the begining
+                ||(locs(qq) + 3*freeSwim.boutAnalysis.boutLength >=size(tmp_vel_fB,1))... % half bout in the end
+                ||(any(isnan(locs(qq):locs(qq)+3*freeSwim.boutAnalysis.boutLength)))... % remove nan-area
+                ||(any(isnan(locs(qq):locs(qq)-3*freeSwim.boutAnalysis.boutLength)))... % nan-area again
+                ||tmp_vel_fB(locs(qq))<= freeSwim.boutAnalysis.VthreshON... %check w/ Vthresh
+                ||tmp_vel_fB(locs(qq))<= freeSwim.boutAnalysis.BthreshOFF %check w/ Bthresh
+            
+            locs(qq)= NaN;
+    end
+end
+
+% ID swim bouts and operate on them
+
+% bout key
+% 1 start frame
+% 2 end frame
+% 3 bout duration in ms
+% 4 orientation before bout in deg
+% 5 orientation after bout in deg
+% 6 turn in deg
 % 
-% %% find peaks
-% [pks,locs] = findpeaks(tmp_vel_fB,'MinPeakProminence',1,'MinPeakDistance',90); %minPeakProminence & minPeakDist as bout interval and min Velo resp
+% 7 mean velo
+% 8 peak velo
+% 9 total distance
+% 10 total L yaw in deg
+% 11 total R yaw in deg
+% 12 angular velocity in deg/sec
 % 
-% for qq = 1:size(locs)
-%     
-%     if (locs(qq) - 3*freeSwim.boutAnalysis.boutLength <=0)... % get rid of any half bout in the begining
-%                 ||(locs(qq) + 3*freeSwim.boutAnalysis.boutLength >=size(tmp_vel_fB,1))... % half bout in the end
-%                 ||(any(isnan(locs(qq):locs(qq)+3*freeSwim.boutAnalysis.boutLength)))... % remove nan-area
-%                 ||(any(isnan(locs(qq):locs(qq)-3*freeSwim.boutAnalysis.boutLength)))... % nan-area again
-%                 ||tmp_vel_fB(locs(qq))<= freeSwim.boutAnalysis.VthreshON... %check w/ Vthresh
-%                 ||tmp_vel_fB(locs(qq))<= freeSwim.boutAnalysis.BthreshOFF %check w/ Bthresh
-%             
-%             locs(qq)= NaN;
+% 13 inter-bout-interval in ms
+
+locs(isnan(locs)) = []; %imp - esle, error w/ for loop - sunbscript indices must be real integers or logicals
+
+tmp_swim_bouts = zeros(size(locs,1),18);
+
+for mm = 1:size(locs,1)
+   
+    %find start frame
+    sss = 0;
+    while locs(mm)-sss>=2*freeSwim.boutAnalysis.boutLength...
+            && tmp_vel_fV(locs(mm)-sss) >= freeSwim.boutAnalysis.VthreshON % using narrow filter for onset
+        sss = sss + 1;
+    end   
+    
+    tmp_swim_bouts(mm,1) = locs(mm)-sss+1; %bout start frame
+    
+    
+    %find end frame
+    eee = 0;
+    while locs(mm)<=size(tmp_vel_fB,1)...
+            && tmp_vel_fB(locs(mm)+eee) >= freeSwim.boutAnalysis.BthreshOFF % using broad filter for offset
+        eee = eee + 1;
+    end
+    
+    tmp_swim_bouts(mm,2) = locs(mm)+eee-1; %bout end frame
+    
+    %bout duration in ms
+    tmp_swim_bouts(mm,3) = (tmp_swim_bouts(mm,2) - tmp_swim_bouts(mm,1))*frame_length_calc_ms;
+    
+    %orientation before bout /avg of 10 frames or 13.3 ms
+    tmp_swim_bouts(mm,4) = nanmean(tmp_ori_deg((tmp_swim_bouts(mm,1)-11):(tmp_swim_bouts(mm,1)-1)));
+    
+    %orientation after bout /avg of 10 frames or 13.3 ms
+    tmp_swim_bouts(mm,5) = nanmean(tmp_ori_deg((tmp_swim_bouts(mm,2)+1):(tmp_swim_bouts(mm,2)+11)));
+        
+    %TURN (ori after - ori before)
+    tmp_swim_bouts(mm,6) = tmp_swim_bouts(mm,5)-tmp_swim_bouts(mm,4);
+    
+    %correct for change in orientation
+    if tmp_swim_bouts(mm,6) > pi % right turn 
+        tmp_swim_bouts(mm,6) =  tmp_swim_bouts(mm,6) - 2*pi;
+        
+    elseif tmp_swim_bouts(mm,6) < -pi % left turn
+        tmp_swim_bouts(mm,6) =  2*pi + tmp_swim_bouts(mm,6);
+    end
+    
+    % mean velocity during bout
+    tmp_swim_bouts(mm,7) = nanmean(tmp_vel_fV(tmp_swim_bouts(mm,1):tmp_swim_bouts(mm,2)));
+    
+    % max velocity during bout
+    tmp_swim_bouts(mm,8) = nanmax(tmp_vel_fV(tmp_swim_bouts(mm,1):tmp_swim_bouts(mm,2)));
+    
+    % total distance covered during the bout
+    tmp_swim_bouts(mm,9) = nansum(tmp_dist_fV(tmp_swim_bouts(mm,1):tmp_swim_bouts(mm,2)));
+    
+    %head yaw during bouts
+    yaws = tmp_delta_ori_filtered2(tmp_swim_bouts(mm,1):tmp_swim_bouts(mm,2));
+    tmp_swim_bouts(mm,10)= nansum(yaws(yaws>0)); %summation of total left yaws
+    tmp_swim_bouts(mm,11)= nansum(yaws(yaws<0)); %summation of total right yaws
+    
+    %angular velocity
+    tmp_swim_bouts(mm,12) = nansum(abs(yaws))/tmp_swim_bouts(mm,3); %deg/sec
+    
+    %tail half bends
+    tmp_swim_bouts(mm,14)= nansum(islocalmin(tmp_delta_ori_filtered2((tmp_swim_bouts(mm,1)):(tmp_swim_bouts(mm,2))),'MinSeparation',20));
+    tmp_swim_bouts(mm,15)= nansum(islocalmax(tmp_delta_ori_filtered2((tmp_swim_bouts(mm,1)):(tmp_swim_bouts(mm,2))),'MinSeparation',20));
+    tmp_swim_bouts(mm,16)= tmp_swim_bouts(mm,14)+tmp_swim_bouts(mm,15);
+        
+    minmax(mm).min = tmp_swim_bouts(mm,1)+find(islocalmin(tmp_delta_ori_filtered2((tmp_swim_bouts(mm,1)):(tmp_swim_bouts(mm,2))))==1);
+    minmax(mm).max = tmp_swim_bouts(mm,1)+find(islocalmax(tmp_delta_ori_filtered2((tmp_swim_bouts(mm,1)):(tmp_swim_bouts(mm,2))))==1);
+     
+end
+
+%% quantify independent tail beats
+% ind_beats_change = ischange(tmp_delta_ori_filtered2,'Variance');
+% 
+% % plot(ind_beats_change);
+% % hold on;
+% % plot(tmp_delta_ori_filtered2-1);
+% % hold off;
+% 
+% ind_beats_num=0;
+% idx_beats = find(ind_beats_change==1);
+% 
+% for ib = 160:length(idx_beats)-160
+%     for ibb = 1:size(tmp_swim_bouts,1)
+% if sum(ismember(tmp_data(idx_beats(ib)-150:idx_beats(ib)+150,1),tmp_swim_bouts(ibb,1):tmp_swim_bouts(ibb,2)))==0 % beat event ± 200 ms range    
+%     ind_beats_num=ind_beats_num+1; 
+%     ind_beats_frame(ind_beats_num)=idx_beats(ib);
+% end
 %     end
 % end
-% 
-% %% ID swim bouts and operate on them
-% 
-% %bout key
-% %1 start frame
-% %2 end frame
-% %3 bout duration in ms
-% %4 orientation before bout in deg
-% %5 orientation after bout in deg
-% %6 turn in deg
-% 
-% %7 mean velo
-% %8 peak velo
-% %9 total distance
-% %10 total L yaw in deg
-% %11 total R yaw in deg
-% %12 angular velocity in deg/sec
-% 
-% %13 inter-bout-interval in ms
-% 
-% locs(isnan(locs)) = []; %imp - esle, error w/ for loop - sunbscript indices must be real integers or logicals
-% 
-% tmp_swim_bouts = zeros(size(locs,1),15);
-% 
-% for mm = 1:size(locs,1)
-%    
-%     %find start frame
-%     sss = 0;
-%     while locs(mm)-sss>=2*freeSwim.boutAnalysis.boutLength...
-%             && tmp_vel_fV(locs(mm)-sss) >= freeSwim.boutAnalysis.VthreshON % using narrow filter for onset
-%         sss = sss + 1;
-%     end   
-%     
-%     tmp_swim_bouts(mm,1) = locs(mm)-sss+1; %bout start frame
-%     
-%     
-%     %find end frame
-%     eee = 0;
-%     while locs(mm)<=size(tmp_vel_fB,1)...
-%             && tmp_vel_fB(locs(mm)+eee) >= freeSwim.boutAnalysis.BthreshOFF % using broad filter for offset
-%         eee = eee + 1;
-%     end
-%     
-%     tmp_swim_bouts(mm,2) = locs(mm)+eee-1; %bout end frame
-%     
-%     %bout duration in ms
-%     tmp_swim_bouts(mm,3) = (tmp_swim_bouts(mm,2) - tmp_swim_bouts(mm,1))*frame_length_calc_ms;
-%     
-%     %orientation before bout /avg of 10 frames or 13.3 ms
-%     tmp_swim_bouts(mm,4) = nanmean(tmp_ori_deg((tmp_swim_bouts(mm,1)-11):(tmp_swim_bouts(mm,1)-1)));
-%     
-%     %orientation after bout /avg of 10 frames or 13.3 ms
-%     tmp_swim_bouts(mm,5) = nanmean(tmp_ori_deg((tmp_swim_bouts(mm,2)+1):(tmp_swim_bouts(mm,2)+11)));
-%         
-%     %TURN (ori after - ori before)
-%     tmp_swim_bouts(mm,6) = tmp_swim_bouts(mm,5)-tmp_swim_bouts(mm,4);
-%     
-%     %correct for change in orientation
-%     if tmp_swim_bouts(mm,6) > pi % right turn 
-%         tmp_swim_bouts(mm,6) =  tmp_swim_bouts(mm,6) - 2*pi;
-%         
-%     elseif tmp_swim_bouts(mm,6) < -pi % left turn
-%         tmp_swim_bouts(mm,6) =  2*pi + tmp_swim_bouts(mm,6);
-%     end
-%     
-%     % mean velocity during bout
-%     tmp_swim_bouts(mm,7) = nanmean(tmp_vel_fV(tmp_swim_bouts(mm,1):tmp_swim_bouts(mm,2)));
-%     
-%     % max velocity during bout
-%     tmp_swim_bouts(mm,8) = nanmax(tmp_vel_fV(tmp_swim_bouts(mm,1):tmp_swim_bouts(mm,2)));
-%     
-%     % total distance covered during the bout
-%     tmp_swim_bouts(mm,9) = nansum(tmp_dist_fV(tmp_swim_bouts(mm,1):tmp_swim_bouts(mm,2)));
-%     
-%     %head yaw during bouts
-%     yaws = tmp_delta_ori(tmp_swim_bouts(mm,1):tmp_swim_bouts(mm,2));
-%     tmp_swim_bouts(mm,10)= nansum(yaws(yaws>0)); %summation of total left yaws
-%     tmp_swim_bouts(mm,11)= nansum(yaws(yaws<0)); %summation of total right yaws
-%     
-%     %angular velocity
-%     tmp_swim_bouts(mm,12) = nansum(abs(yaws))/tmp_swim_bouts(mm,3); %deg/sec
-%     
-% end
-%  
-% %% IBI section
-% tmp_vel_IBI_fV = tmp_vel_fV;
-% 
-% % ID overlapping bouts and NaN them
-% % very poorly written; had an indexing error and then just worked
-% % around making it poorer and poorer, but it works!
-% 
-% for oo = 1:size(tmp_swim_bouts,1)
-%    if oo==1
-%        while tmp_swim_bouts(oo,2)>=tmp_swim_bouts(oo+1,1)
-%        
-%        tmp_swim_bouts(oo, 3:end) = NaN; % convert all bout parameters corresp to this bout to NaN;
-%        locs(oo) = NaN;
-%        tmp_vel_IBI_fV(tmp_swim_bouts(oo,1):tmp_swim_bouts(oo,2))= NaN; % the velo vector to NaN as well - imp to ID NaN values in IBI cals  
-%        
-%        end
-%    
-%    elseif oo == size(tmp_swim_bouts,1)
-%        
-%        while tmp_swim_bouts(oo,1)<=tmp_swim_bouts(oo-1,2)
-%        
-%        tmp_swim_bouts(oo, 3:end) = NaN; % convert all bout parameters corresp to this bout to NaN;
-%        locs(oo) = NaN;
-%        tmp_vel_IBI_fV(tmp_swim_bouts(oo,1):tmp_swim_bouts(oo,2))= NaN; % the velo vector to NaN as well - imp to ID NaN values in IBI cals  
-%        
-%        end
-%       
-%    
-%    elseif size(tmp_swim_bouts,1)>oo && oo>1
-%        while tmp_swim_bouts(oo,1)<=tmp_swim_bouts(oo-1,2)||tmp_swim_bouts(oo,2)>=tmp_swim_bouts(oo+1,1)
-%        
-%        tmp_swim_bouts(oo, 3:end) = NaN; % convert all bout parameters corresp to this bout to NaN;
-%        locs(oo) = NaN;
-%        tmp_vel_IBI_fV(tmp_swim_bouts(oo,1):tmp_swim_bouts(oo,2))= NaN; % the velo vector to NaN as well - imp to ID NaN values in IBI cals  
-%        
-%        end
-%    end
-% end
-% 
-%             tmp_swim_bouts(isnan(tmp_swim_bouts(:,3)), : ) = [];
-%             locs(isnan(locs))                              = [];
-%                        
-% % ID consecutive NaNs in velocity vector - imp for IBI identification
-% tmp_vel_CC = bwconncomp(isnan(tmp_vel_IBI_fV));
-% pixel_Idx = cellfun('prodofsize',tmp_vel_CC.PixelIdxList);
-% tmp_vel_NaNs = zeros(size(tmp_vel_IBI_fV));
-% 
-% for zzz = 1:tmp_vel_CC.NumObjects
-%     tmp_vel_NaNs(tmp_vel_CC.PixelIdxList{zzz})=pixel_Idx(zzz);
-% end 
-% 
-% % Calculate the IBI
-% tmp_swim_bouts(:,13) = NaN;
-% 
-% for ibi=2:size(tmp_swim_bouts,1)
-%    tmp_swim_bouts(ibi,13)= (tmp_swim_bouts(ibi,1)-tmp_swim_bouts(ibi-1,2))*frame_length_calc_ms;
-%    
-%    if tmp_vel_NaNs(ibi)>=1.5*freeSwim.boutAnalysis.boutLength % >300 ms
-%        tmp_swim_bouts(ibi,13)=NaN;
-%    end
-%     
-% end
+
+
+%% IBI section
+tmp_vel_IBI_fV = tmp_vel_fV;
+
+% ID overlapping bouts and NaN them
+% very poorly written; had an indexing error and then just worked
+% around making it poorer and poorer, but it works!
+
+for oo = 1:size(tmp_swim_bouts,1)
+   if (oo>=2 && tmp_swim_bouts(oo,1)<=tmp_swim_bouts(oo-1,2))...
+           || (oo<=size(tmp_swim_bouts,1)-1 && tmp_swim_bouts(oo,2)>=tmp_swim_bouts(oo+1,1))
+       
+       tmp_swim_bouts(oo, 3:end) = NaN; % convert all bout parameters corresp to this bout to NaN;
+       locs(oo) = NaN;
+       tmp_vel_IBI_fV(tmp_swim_bouts(oo,1):tmp_swim_bouts(oo,2))= NaN; % the velo vector to NaN as well - imp to ID NaN values in IBI cals  
+       
+   end
+end
+
+            tmp_swim_bouts(isnan(tmp_swim_bouts(:,3)), : ) = [];
+            locs(isnan(locs)) = [];
+
+                       
+% ID consecutive NaNs in velocity vector - imp for IBI identification
+tmp_vel_CC = bwconncomp(isnan(tmp_vel_IBI_fV));
+pixel_Idx = cellfun('prodofsize',tmp_vel_CC.PixelIdxList);
+tmp_vel_NaNs = zeros(size(tmp_vel_IBI_fV));
+
+for zzz = 1:tmp_vel_CC.NumObjects
+    tmp_vel_NaNs(tmp_vel_CC.PixelIdxList{zzz})=pixel_Idx(zzz);
+end 
+
+% Calculate the IBI
+tmp_swim_bouts(:,13) = NaN;
+
+for ibi=2:size(tmp_swim_bouts,1)
+   tmp_swim_bouts(ibi,13)= (tmp_swim_bouts(ibi,1)-tmp_swim_bouts(ibi-1,2))*frame_length_calc_ms;
+   
+   if tmp_vel_NaNs(ibi)>=1.5*freeSwim.boutAnalysis.boutLength % >300 ms
+       tmp_swim_bouts(ibi,13)=NaN;
+   end
+    
+end
 
 
 %% some plots
 fig1 = figure;
 hold on; 
-plot(tmp_vel_unfilt); 
-%plot(tmp_vel_fV,'LineWidth', 3); 
-plot(tmp_vel_fB,'LineWidth', 3);
-%plot(tmp_vel_fF,'LineWidth', 3);                
+%plot(tmp_vel_unfilt); 
+%plot(tmp_vel_fV,'LineWidth', 3);
+plot(tmp_vel_fB,'LineWidth', 1);
+%plot(tmp_vel_fF,'LineWidth', 3);
 
 %plot(20*pks);
 %plot(20*dxB-10);
 %plot(dxV-10);
 %plot(20*dyB-20);
 %plot(dyV-20);
-plot(50*tmp_delta_ori-5);
+
+%plot(10*tmp_delta_ori-1);
+%plot(1/10*tmp_delta_ori_filtered2-1.5, 'b-', 'LineWidth', 2);
+plot(1/10*deg2rad(tmp_ang_vel),'LineWidth', 1);
+
+%plot(10*tmp_delta_ori_filtered(pMax)-1.5,'r*');
+%plot(10*tmp_delta_ori_filtered(pMin)-1.5,'g*');
+
 %vline(tmp_swim_bouts(:,1));
 %vline(tmp_swim_bouts(:,2));
 hold off;
 
-% fig2 = figure; histfit(tmp_swim_bouts(:,3),50);
-% fig3 = figure; histogram(tmp_swim_bouts(:,7),50);
-% fig4 = figure; histogram(tmp_swim_bouts(:,8),50);
-% fig5 = figure; histogram(tmp_swim_bouts(:,13),50);
+% fig2 = figure; histfit(tmp_swim_bouts(:,3),50); title('bout duration ms');
+% fig3 = figure; histogram(tmp_swim_bouts(:,7),50);title('mean velo');
+% fig4 = figure; histogram(tmp_swim_bouts(:,8),50);title('peak velo');
+% fig5 = figure; histogram(tmp_swim_bouts(:,13),50);title('IBI');
+% fig6 = figure; histogram(tmp_swim_bouts(:,12),50);title('angular velo');
+% fig7 = figure; histogram(tmp_swim_bouts(:,9),50);title('total dist');
 
 dcm1 = datacursormode(fig1);
 set(dcm1, 'UpdateFcn', @Data_Cursor_precision, 'Enable', 'on');
