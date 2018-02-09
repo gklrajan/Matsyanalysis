@@ -1,7 +1,13 @@
 clearvars; clc;
 
-load('Danionella_040218.mat');
-pooledRaw_Danio =[freeSwim(1).boutData;freeSwim(2).boutData;freeSwim(3).boutData;freeSwim(4).boutData;freeSwim(5).boutData;freeSwim(6).boutData;freeSwim(7).boutData;freeSwim(8).boutData;freeSwim(9).boutData];
+load('Danionella8dpf_040218.mat');
+
+for cc=1:size(freeSwim,2)
+tmp_freeSwim(cc).boutData=freeSwim(cc).boutData;
+norm_freeSwim(cc).boutData= StatisticalNormaliz(tmp_freeSwim(cc).boutData,'standard')
+end
+
+
 pooledMedian_MT = nanmean(pooledRaw_Danio);
 pooledMAD_MT = std(pooledRaw_Danio);
 close();

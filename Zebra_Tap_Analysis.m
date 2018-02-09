@@ -133,7 +133,7 @@ ypos = tmp_data(:, 5);
 
 if dish_repeat == 0
 snap = imread('petriplate.jpg');
-dish_center = determine_dish_centre(snap,440);
+dish_center = determine_dish_centre(snap,430);
 dish_repeat = dish_repeat+1;
 end
 
@@ -294,7 +294,6 @@ tmp_vel_fF(idx_nan) = nan; % re-insert the nan values
 % remoivng nans for filtering orientation
 tmp_delta_ori = rad2deg(tmp_delta_ori);
 tmp_delta_ori(idx_nan) = 0;
-tmp_delta_ori(1) = 0;
 
 tmp_delta_ori_filtered = tmp_delta_ori;
 tmp_delta_ori_filtered(isnan(tmp_delta_ori_filtered))=0;
@@ -313,7 +312,6 @@ hold off;
 
 %re-inserting nans
 tmp_delta_ori(idx_nan) = NaN;
-tmp_delta_ori(1) = NaN;
 tmp_ang_vel = tmp_delta_ori_filtered2.*datarate_Hz;
 
 plot(tmp_ang_vel-10); title('ang velo compare');

@@ -25,7 +25,7 @@ filePattern = fullfile(myDir,'*.bin');
 myFiles = dir(filePattern);
 
 tic;
-dish_repeat =0;
+dish_repeat =0; % for calculating the dish center only once
 
 for ff = 1:length(myFiles)
     
@@ -58,7 +58,7 @@ tmp_data = tmp_data(1:(end-mod(size(tmp_data,1), num_data_categories)), 1); % cu
 tmp_data = reshape(tmp_data, [num_data_categories, size(tmp_data, 1)/num_data_categories])';
 
 freeSwim(ff).datarate_Hz = datarate_Hz;
-freeSwim(ff).boutAnalysis.boutLength = 150; % considering the bout length to be 200ms / 750Hz acq
+freeSwim(ff).boutAnalysis.boutLength = 300; % considering the bout length to be 300ms (cal 423ms) / 750Hz acq
 freeSwim(ff).boutAnalysis.VthreshON = 1;
 freeSwim(ff).boutAnalysis.BthreshOFF = 2;
 
@@ -122,20 +122,20 @@ fprintf('Now reading %f',ff); fprintf(' of %f files\n',length(myFiles));
 
 
 % %% dish center
-% 
 xpos = tmp_data(:, 4);
 ypos = tmp_data(:, 5);
 
-if dish_repeat == 0
+if dish_repeat == 0 % only performed once in the begining for a batch, only for convenience (since I'm using the same dish position for recording)
 snap = imread('petriplate.jpg');
-dish_center = determine_dish_centre(snap,440);
+dish_center = determine_dish_centre(snap,430);
 dish_repeat = dish_repeat+1;
 end
 
+% nan the positions outside 430px radius form the center
 tmp_radialloc = sqrt((xpos - dish_center(1) ).^2 + (ypos - dish_center(2)).^2);
 tmp_inmiddle  = tmp_radialloc < 430; %depends on pixel resolution/ plate diameter
 idx_edge = find(tmp_inmiddle==0);
-tmp_data(idx_edge,2:end) = nan;
+tmp_data(idx_edge,2:end) = nan; %all data in the tmp raw data is NaNed except for the frame numbers 
 
 
 %%
@@ -287,8 +287,7 @@ tmp_vel_fF(idx_nan) = nan; % re-insert the nan values
 
 % remoivng nans for filtering orientation
 tmp_delta_ori = rad2deg(tmp_delta_ori);
-tmp_delta_ori(idx_nan) = 0;
-tmp_delta_ori(1) = 0;
+tmp_delta_ori(idx_nan) = 0; % convert all NaNs to 0s for filtering
 
 tmp_delta_ori_filtered = tmp_delta_ori;
 tmp_delta_ori_filtered(isnan(tmp_delta_ori_filtered))=0;
@@ -307,7 +306,6 @@ hold off;
 
 %re-inserting nans
 tmp_delta_ori(idx_nan) = NaN;
-tmp_delta_ori(1) = NaN;
 tmp_ang_vel = tmp_delta_ori_filtered2.*datarate_Hz;
 
 plot(tmp_ang_vel-10); title('ang velo compare');
@@ -427,8 +425,6 @@ end
 tmp_vel_IBI_fV = tmp_vel_fV;
 
 % ID overlapping bouts and NaN them
-% very poorly written; had an indexing error and then just worked
-% around making it poorer and poorer, but it works!
 
 for oo = 1:size(tmp_swim_bouts,1)
    if (oo>=2 && tmp_swim_bouts(oo,1)<=tmp_swim_bouts(oo-1,2))...

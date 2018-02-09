@@ -39,7 +39,7 @@ tmp_data = reshape(tmp_data, [num_data_categories, size(tmp_data, 1)/num_data_ca
 
 freeSwim.boutAnalysis.acquis_date.exp_type.fish_num.datarate_Hz = datarate_Hz;
 
-freeSwim.boutAnalysis.boutLength = 150; % considering the bout length to be 200ms / 750Hz acq
+freeSwim.boutAnalysis.boutLength = 300; % considering the bout length to be 300ms (cal 423ms) / 750Hz acq
 freeSwim.boutAnalysis.VthreshON = 1;
 freeSwim.boutAnalysis.BthreshOFF = 1;
 
@@ -267,7 +267,6 @@ tmp_vel_fF(idx_nan) = nan; % re-insert the nan values
 % remoivng nans for filtering orientation
 tmp_delta_ori = rad2deg(tmp_delta_ori);
 tmp_delta_ori(idx_nan) = 0;
-tmp_delta_ori(1) = 0;
 
 tmp_delta_ori_filtered = tmp_delta_ori;
 tmp_delta_ori_filtered(isnan(tmp_delta_ori_filtered))=0;
@@ -286,7 +285,6 @@ hold off;
 
 %re-inserting nans
 tmp_delta_ori(idx_nan) = NaN;
-tmp_delta_ori(1) = NaN;
 tmp_ang_vel = tmp_delta_ori_filtered2.*datarate_Hz;
 
 %check foe velo vs ang velo
