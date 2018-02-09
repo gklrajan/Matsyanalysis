@@ -1,33 +1,43 @@
 clearvars; clc;
+load('Danionella5dpf_050218.mat');
+for cc=1:size(freeSwim,2)
+tmp5_freeSwim(cc).boutData=freeSwim(cc).boutData;
+norm5_freeSwim(cc).boutData= StatisticalNormaliz(tmp5_freeSwim(cc).boutData,'standard');
+pooledMedian5(cc,:) = nanmedian(norm5_freeSwim(cc).boutData);
+pooledMAD5(cc,:) = mad(norm5_freeSwim(cc).boutData);
+end
+close();
+
+pooled5dpf = norm5_freeSwim(1).boutData;
+for dataSize=2:size(freeSwim,2)
+pooled5dpf=[pooled5dpf;norm5_freeSwim(dataSize).boutData];
+end
+    
 
 load('Danionella8dpf_040218.mat');
-
 for cc=1:size(freeSwim,2)
-tmp_freeSwim(cc).boutData=freeSwim(cc).boutData;
-norm_freeSwim(cc).boutData= StatisticalNormaliz(tmp_freeSwim(cc).boutData,'standard')
+tmp8_freeSwim(cc).boutData=freeSwim(cc).boutData;
+norm8_freeSwim(cc).boutData= StatisticalNormaliz(tmp8_freeSwim(cc).boutData,'standard');
+pooledMedian8(cc,:) = nanmedian(norm8_freeSwim(cc).boutData);
+pooledMAD8(cc,:) = mad(norm8_freeSwim(cc).boutData);
+end
+close();
+
+pooled8dpf = norm8_freeSwim(1).boutData;
+for dataSize2=2:size(freeSwim,2)
+pooled8dpf=[pooled8dpf;norm8_freeSwim(dataSize).boutData];
 end
 
-
-pooledMedian_MT = nanmean(pooledRaw_Danio);
-pooledMAD_MT = std(pooledRaw_Danio);
-close();
-
-load('Danionella5dpf_050218.mat');
-pooledRaw_WT =[freeSwim(1).boutData;freeSwim(2).boutData; freeSwim(3).boutData;freeSwim(4).boutData];
-pooledMedian_WT = nanmean(pooledRaw_WT);
-pooledMAD_WT = std(pooledRaw_WT);
-close();
-
-for ii=1:size(pooledRaw_Danio,2)
-[p(ii),h(ii),stats(ii)] = ranksum(pooledRaw_Danio(:,ii),pooledRaw_WT(:,ii),'alpha',0.01);
+for ii=1:size(pooled8dpf,2)
+[p(ii),h(ii),stats(ii)] = ranksum(pooled5dpf(:,ii),pooled8dpf(:,ii),'alpha',0.01);
 end
 
 % for ii=1:size(pooledRaw_MT,2)
 % [h(ii),p(ii)] = ttest2(pooledRaw_MT(:,ii),pooledRaw_WT(:,ii));
 % end
 
-pooledRaw_Danio(:,12)=rad2deg(pooledRaw_Danio(:,12));
-pooledRaw_WT(:,12)=rad2deg(pooledRaw_WT(:,12));
+pooledRaw_Danio(:,12)=rad2deg(pooled5dpf(:,12));
+pooledRaw_WT(:,12)=rad2deg(pooled8dpf(:,12));
 
 jugaad = [3,6,7,8,9,12,13,16];
 title_jugaad = ["bout duration in ms","turn angle in deg","mean velocity in mm/sec","peak velocity in mm/sec","total distance in mm","angular velocity in deg/sec","inter-bout interval in ms","number of tail beats per bout"];
@@ -35,13 +45,13 @@ xlabel_jugaad = ["duration (ms)","turn (deg)","mean velocity(mm/sec)","peak velo
 figure1 = figure;
 for gg = 1:length(jugaad)
 subplot(2,8,gg);
-histogram(pooledRaw_WT(:,jugaad(gg)),70);        
+histogram(pooled5dpf(:,jugaad(gg)),70);        
 title(title_jugaad(gg));
 xlabel(xlabel_jugaad(gg));
 ylabel({'# of bouts'});
 
 subplot(2,8,gg+8);
-histogram(pooledRaw_Danio(:,jugaad(gg)),70);
+histogram(pooled8dpf(:,jugaad(gg)),70);
 title(title_jugaad(gg));
 xlabel(xlabel_jugaad(gg));
 ylabel({'# of bouts'});
