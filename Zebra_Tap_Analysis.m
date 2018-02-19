@@ -138,7 +138,7 @@ dish_repeat = dish_repeat+1;
 end
 
 tmp_radialloc = sqrt((xpos - dish_center(1) ).^2 + (ypos - dish_center(2)).^2);
-tmp_inmiddle  = tmp_radialloc < 430; %depends on pixel resolution/ plate diameter
+tmp_inmiddle  = tmp_radialloc < 460; %depends on pixel resolution/ plate diameter
 idx_edge = find(tmp_inmiddle==0);
 tmp_data(idx_edge,2:end) = nan;
 
@@ -553,5 +553,6 @@ clearvars -except filePattern myDir myFiles tapEscape dish_repeat dish_center;
 end % end a file
 
 timeElapsed = toc;
-save('/Institut Curie/Lab/Projects/Scripts/ZebranalysisSystem/WT_TAP_data.mat','tapEscape');
+saveFile = CatStr(myDir,'WT_TAP_data.mat');
+save(saveFile,'tapEscape');
 fprintf('Total elapsed time is %f secs \n',timeElapsed);

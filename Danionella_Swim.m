@@ -121,7 +121,7 @@ fprintf('Current file is %s\n',fileName);
 fprintf('Now reading %f',ff); fprintf(' of %f files\n',length(myFiles));
 
 
-% %% dish center
+%% dish center
 xpos = tmp_data(:, 4);
 ypos = tmp_data(:, 5);
 
@@ -133,7 +133,7 @@ end
 
 % nan the positions outside 430px radius form the center
 tmp_radialloc = sqrt((xpos - dish_center(1) ).^2 + (ypos - dish_center(2)).^2);
-tmp_inmiddle  = tmp_radialloc < 430; %depends on pixel resolution/ plate diameter
+tmp_inmiddle  = tmp_radialloc < 460; %depends on pixel resolution/ plate diameter
 idx_edge = find(tmp_inmiddle==0);
 tmp_data(idx_edge,2:end) = nan; %all data in the tmp raw data is NaNed except for the frame numbers 
 
@@ -291,22 +291,22 @@ tmp_delta_ori(idx_nan) = 0; % convert all NaNs to 0s for filtering
 
 tmp_delta_ori_filtered = tmp_delta_ori;
 tmp_delta_ori_filtered(isnan(tmp_delta_ori_filtered))=0;
-windowWidth = 25; %larger window leads to more averaging --> depends on your signal
+windowWidth = 31; %larger window leads to more averaging --> depends on your signal
 polynomialOrder = 3; %larger order --> less smotthing
 tmp_delta_ori_filtered = sgolayfilt(tmp_delta_ori_filtered, polynomialOrder, windowWidth);
 plot(tmp_delta_ori_filtered);
 hold on;
 % another small window filtering to further smoothen the signal, useful for
 % finding local maximas and minimas.
-windowWidth2 = 10;
+windowWidth2 = 21;
 polynomialOrder2 = 3;
-tmp_delta_ori_filtered2=sgolayfilt(tmp_delta_ori_filtered, polynomialOrder, windowWidth);
+tmp_delta_ori_filtered2=sgolayfilt(tmp_delta_ori_filtered, polynomialOrder2, windowWidth2);
 plot(tmp_delta_ori_filtered2);title('check filtered output before proceeding');
 hold off;
 
 %re-inserting nans
 tmp_delta_ori(idx_nan) = NaN;
-tmp_ang_vel = tmp_delta_ori_filtered2.*datarate_Hz;
+tmp_ang_vel = abs(tmp_delta_ori_filtered2).*datarate_Hz;
 
 plot(tmp_ang_vel-10); title('ang velo compare');
 hold on;
@@ -517,7 +517,8 @@ clearvars -except filePattern myDir myFiles freeSwim dish_repeat dish_center;
 end % end a file
 
 timeElapsed = toc;
-save('/Institut Curie/Lab/Projects/Scripts/ZebranalysisSystem/Danionella5dpf_050218.mat','freeSwim');
+saveFile = CatStr(myDir,'Danionella3week_130218.mat');
+save(saveFile,'freeSwim');
 fprintf('Total elapsed time is %f secs \n',timeElapsed);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

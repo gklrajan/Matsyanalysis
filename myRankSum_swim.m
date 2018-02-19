@@ -1,5 +1,8 @@
 clearvars; clc;
 
+% [FileName, PathName] = uigetfile('*.mat');
+% cd(PathName);
+
 load('AST_swim.mat');
 pooledRaw_MT =[freeSwim(1).boutData;freeSwim(2).boutData];
 pooledMedian_MT = nanmedian(pooledRaw_MT);

@@ -1,5 +1,8 @@
 clearvars; clc;
 
+% [FileName, PathName] = uigetfile('*.mat');
+% cd(PathName);
+
 load('AST_TAP_data.mat');
 pooledRaw_MT =[tapEscape(1).boutData;tapEscape(2).boutData];
 pooledMean_MT = nanmean(pooledRaw_MT);

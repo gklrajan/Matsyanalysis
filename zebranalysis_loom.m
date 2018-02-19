@@ -546,4 +546,5 @@ hold off;
 % dcm1 = datacursormode(fig1);
 % set(dcm1, 'UpdateFcn', @Data_Cursor_precision, 'Enable', 'on');
 
-save('/Institut Curie/Lab/Projects/Scripts/ZebranalysisSystem/AST_LOOM_data.mat',freeSwim);
+savePath = strcat(PathName,'AST_LOOM_data.mat');
+save(savePath,freeSwim);

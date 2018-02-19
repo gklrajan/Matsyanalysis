@@ -14,7 +14,7 @@ set(0, 'DefaultFigureVisible', 'on');
 clearvars; clc;
 
 [FileName, PathName] = uigetfile('*.bin');
-%cd(PathName);
+cd(PathName);
 
 % extract parameters from filename
 tmp_str = strsplit(FileName, '_');
@@ -99,17 +99,17 @@ fprintf('\n\nfirst frame in the block of missed frames : number of frames lost\n
 fprintf('\n %d: %d',  [idx_lost, frame_diff(idx_frame)-1].');
 fprintf('\n\ntiming flawed (outside of lost frames):  %d  \n', ~isTime  );
 
-%% dish center
+% %% dish center
 
-xpos = tmp_data(:, 4);
-ypos = tmp_data(:, 5);
-
-snap = imread('petriplate.jpg');
-dish_center = determine_dish_centre(snap,440);
-tmp_radialloc = sqrt((xpos - dish_center(1) ).^2 + (ypos - dish_center(2)).^2);
-tmp_inmiddle  = tmp_radialloc < 430; %depends on pixel resolution/ plate diameter
-idx_edge = find(tmp_inmiddle==0);
-tmp_data(idx_edge,2:end) = nan;
+% xpos = tmp_data(:, 4);
+% ypos = tmp_data(:, 5);
+% 
+% snap = imread('petriplate.jpg');
+% dish_center = determine_dish_centre(snap,440);
+% tmp_radialloc = sqrt((xpos - dish_center(1) ).^2 + (ypos - dish_center(2)).^2);
+% tmp_inmiddle  = tmp_radialloc < 430; %depends on pixel resolution/ plate diameter
+% idx_edge = find(tmp_inmiddle==0);
+% tmp_data(idx_edge,2:end) = nan;
 
 
 %%
@@ -270,25 +270,25 @@ tmp_delta_ori(idx_nan) = 0;
 
 tmp_delta_ori_filtered = tmp_delta_ori;
 tmp_delta_ori_filtered(isnan(tmp_delta_ori_filtered))=0;
-windowWidth = 25; %larger window leads to more averaging --> depends on your signal
+windowWidth = 31; %larger window leads to more averaging --> depends on your signal
 polynomialOrder = 3; %larger order --> less smotthing
 tmp_delta_ori_filtered = sgolayfilt(tmp_delta_ori_filtered, polynomialOrder, windowWidth);
 plot(tmp_delta_ori_filtered);
 hold on;
 % another small window filtering to further smoothen the signal, useful for
 % finding local maximas and minimas.
-windowWidth2 = 11;
+windowWidth2 = 21;
 polynomialOrder2 = 3;
-tmp_delta_ori_filtered2=sgolayfilt(tmp_delta_ori_filtered, polynomialOrder, windowWidth);
+tmp_delta_ori_filtered2=sgolayfilt(tmp_delta_ori_filtered, polynomialOrder2, windowWidth2);
 plot(tmp_delta_ori_filtered2);title('check filtered output before proceeding');
 hold off;
 
 %re-inserting nans
 tmp_delta_ori(idx_nan) = NaN;
-tmp_ang_vel = tmp_delta_ori_filtered2.*datarate_Hz;
+tmp_ang_vel = abs(tmp_delta_ori_filtered2).*datarate_Hz;
 
 %check foe velo vs ang velo
-plot(tmp_ang_vel-10); title('ang velo compare');
+plot(tmp_ang_vel); title('ang velo compare');
 hold on;
 plot(tmp_vel_fB);
 hold off;
@@ -401,25 +401,39 @@ for mm = 1:size(locs,1)
      
 end
 
-%% quantify independent tail beats
-% ind_beats_change = ischange(tmp_delta_ori_filtered2,'Variance');
+% % %% quantify independent tail beats
 % 
-% % plot(ind_beats_change);
-% % hold on;
-% % plot(tmp_delta_ori_filtered2-1);
-% % hold off;
+% tmp_delta_ori_filtered3 = sgolayfilt(tmp_delta_ori_filtered2, polynomialOrder, windowWidth);
+% ind_beats_change = ischange(tmp_delta_ori_filtered3,'variance','Threshold',1);
+% 
+% plot(ind_beats_change);
+% hold on;
+% plot(tmp_delta_ori_filtered3-1);
+% hold off;
 % 
 % ind_beats_num=0;
 % idx_beats = find(ind_beats_change==1);
 % 
-% for ib = 160:length(idx_beats)-160
-%     for ibb = 1:size(tmp_swim_bouts,1)
-% if sum(ismember(tmp_data(idx_beats(ib)-150:idx_beats(ib)+150,1),tmp_swim_bouts(ibb,1):tmp_swim_bouts(ibb,2)))==0 % beat event ± 200 ms range    
+% % ID consecutive ones in deltaOri trace to ID tail activity
+% tmp_vel_BB = bwconncomp((ind_beats_change==1));
+% beat_Idx = cellfun('prodofsize',tmp_vel_BB.PixelIdxList);
+% 
+% tmp_beats_ones = zeros(size(ind_beats_change));
+% 
+% for tu = 1:tmp_vel_BB.NumObjects
+%     tmp_beats_ones(tmp_vel_CC.PixelIdxList{tu})=beat_Idx(tu);
+% end 
+% 
+% 
+% for karma = 160:length(idx_beats)-160
+%     for dharma = 1:size(tmp_swim_bouts,1)
+% if sum(ismember(tmp_data(idx_beats(karma)-150:idx_beats(karma)+150,1),tmp_swim_bouts(dharma,1):tmp_swim_bouts(ibb,2)))==0 % beat event ± 200 ms range    
 %     ind_beats_num=ind_beats_num+1; 
-%     ind_beats_frame(ind_beats_num)=idx_beats(ib);
+%     ind_beats_frame(ind_beats_num)=idx_beats(karma);
 % end
 %     end
 % end
+
 
 
 %% IBI section
@@ -469,11 +483,11 @@ end
 %% some plots
 fig1 = figure;
 hold on; 
-%plot(tmp_vel_unfilt); 
+plot(tmp_vel_unfilt); 
 %plot(tmp_vel_fV,'LineWidth', 3);
-%plot(tmp_vel_fB,'LineWidth', 1);
+plot(tmp_vel_fB,'LineWidth', 1);
 %plot(tmp_vel_fF,'LineWidth', 3);
-
+plot(tmp_ang_vel);
 %plot(20*pks);
 %plot(20*dxB-10);
 %plot(dxV-10);
@@ -500,3 +514,6 @@ hold off;
 
 dcm1 = datacursormode(fig1);
 set(dcm1, 'UpdateFcn', @Data_Cursor_precision, 'Enable', 'on');
+
+% savePath = strcat(PathName,'Danionella_Single.mat');
+% save(savePath,freeSwim);

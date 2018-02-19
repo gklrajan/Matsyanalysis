@@ -1,8 +1,13 @@
 clearvars; clc;
-load('Danionella5dpf_050218.mat');
+
+% [FileName, PathName] = uigetfile('*.mat');
+% cd(PathName);
+
+load('Danionella3week_130218.mat');
 for cc=1:size(freeSwim,2)
 tmp5_freeSwim(cc).boutData=freeSwim(cc).boutData;
-norm5_freeSwim(cc).boutData= StatisticalNormaliz(tmp5_freeSwim(cc).boutData,'standard');
+norm5_freeSwim(cc).boutData= tmp5_freeSwim(cc).boutData;
+%StatisticalNormaliz(tmp5_freeSwim(cc).boutData,'standard');
 pooledMedian5(cc,:) = nanmedian(norm5_freeSwim(cc).boutData);
 pooledMAD5(cc,:) = mad(norm5_freeSwim(cc).boutData);
 end
@@ -13,18 +18,18 @@ for dataSize=2:size(freeSwim,2)
 pooled5dpf=[pooled5dpf;norm5_freeSwim(dataSize).boutData];
 end
     
-
-load('Danionella8dpf_040218.mat');
+load('Danionella9dpf_110218_nodishCenter.mat');
 for cc=1:size(freeSwim,2)
 tmp8_freeSwim(cc).boutData=freeSwim(cc).boutData;
-norm8_freeSwim(cc).boutData= StatisticalNormaliz(tmp8_freeSwim(cc).boutData,'standard');
+norm8_freeSwim(cc).boutData= tmp8_freeSwim(cc).boutData;
+%StatisticalNormaliz(tmp8_freeSwim(cc).boutData,'standard');
 pooledMedian8(cc,:) = nanmedian(norm8_freeSwim(cc).boutData);
 pooledMAD8(cc,:) = mad(norm8_freeSwim(cc).boutData);
 end
 close();
 
 pooled8dpf = norm8_freeSwim(1).boutData;
-for dataSize2=2:size(freeSwim,2)
+for dataSize=2:size(freeSwim,2)
 pooled8dpf=[pooled8dpf;norm8_freeSwim(dataSize).boutData];
 end
 
